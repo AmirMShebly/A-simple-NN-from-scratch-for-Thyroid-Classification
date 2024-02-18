@@ -9,14 +9,14 @@ class MLP:
         self.hidden_size2 = hidden_size2
         self.output_size = output_size
 
-        self.weights_input_hidden1 = np.random.randn(self.input_size, self.hidden_size1)
-        self.bias_input_hidden1 = np.random.randn(1, self.hidden_size1)
+        self.weights_input_hidden1 = np.random.randn(self.input_size, self.hidden_size1) * np.sqrt(2/input_size)
+        self.bias_input_hidden1 = np.zeros((1, self.hidden_size1))
 
-        self.weights_hidden1_hidden2 = np.random.randn(self.hidden_size1, self.hidden_size2)
-        self.bias_hidden1_hidden2 = np.random.randn(1, self.hidden_size2)
+        self.weights_hidden1_hidden2 = np.random.randn(self.hidden_size1, self.hidden_size2) * np.sqrt(2/hidden_size1)
+        self.bias_hidden1_hidden2 = np.zeros((1, self.hidden_size2))
 
-        self.weights_hidden2_output = np.random.randn(self.hidden_size2, self.output_size)
-        self.bias_hidden2_output = np.random.randn(1, self.output_size)
+        self.weights_hidden2_output = np.random.randn(self.hidden_size2, self.output_size) * np.sqrt(1/hidden_size2)
+        self.bias_hidden2_output = np.zeros((1, self.output_size))
 
         self.learning_rate = learning_rate
 
