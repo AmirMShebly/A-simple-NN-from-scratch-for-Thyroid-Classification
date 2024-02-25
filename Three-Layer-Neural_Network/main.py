@@ -3,11 +3,17 @@ import pandas as pd
 
 
 class MLP:
-    def __init__(self, input_size, hidden_size1, hidden_size2, output_size, learning_rate=0.1):
+    def __init__(self, input_size, hidden_size1, hidden_size2, output_size, learning_rate=0.1,
+                 l2_regularization=False, l2_lambda=0.01, use_dropout=False, dropout_rate=0.3):
         self.input_size = input_size
         self.hidden_size1 = hidden_size1
         self.hidden_size2 = hidden_size2
         self.output_size = output_size
+        self.l2_regularization = l2_regularization
+        self.l2_lambda = l2_lambda
+        self.use_dropout = use_dropout
+        self.dropout_rate = dropout_rate
+
 
         self.weights_input_hidden1 = np.random.randn(self.input_size, self.hidden_size1)
         self.bias_input_hidden1 = np.random.randn(1, self.hidden_size1)
@@ -46,8 +52,17 @@ class MLP:
             hidden_layer1_input = np.dot(X, self.weights_input_hidden1) + self.bias_input_hidden1
             hidden_layer1_output = self.sigmoid(hidden_layer1_input)
 
+            if self.use_dropout:
+                dropout_mask1 = np.random.rand(hidden_layer1_output.shape[0], hidden_layer1_output.shape[1]) > self.dropout_rate
+                hidden_layer1_output = np.multiply(hidden_layer1_output, dropout_mask1)
+
             hidden_layer2_input = np.dot(hidden_layer1_output, self.weights_hidden1_hidden2) + self.bias_hidden1_hidden2
-            hidden_layer2_output = self.sigmoid(hidden_layer2_input)
+            hidden_layer2_output = self._relu(hidden_layer2_input)
+
+            if self.use_dropout:
+                dropout_mask2 = np.random.rand(hidden_layer2_output.shape[0],
+                                               hidden_layer2_output.shape[1]) > self.dropout_rate
+                hidden_layer2_output = np.multiply(hidden_layer2_output, dropout_mask2)
 
             output_layer_input = np.dot(hidden_layer2_output, self.weights_hidden2_output) + self.bias_hidden2_output
             output_layer_output = self.sigmoid(output_layer_input)
@@ -61,14 +76,27 @@ class MLP:
             error_hidden1_layer = d_hidden2_layer.dot(self.weights_hidden1_hidden2.T)
             d_hidden1_layer = error_hidden1_layer * self.sigmoid_derivative(hidden_layer1_output)
 
-            self.weights_hidden2_output += hidden_layer2_output.T.dot(d_output) * self.learning_rate
-            self.bias_hidden2_output += np.sum(d_output, axis=0, keepdims=True) * self.learning_rate
+            if self.l2_regularization:
+                self.weights_hidden2_output += (hidden_layer2_output.T.dot(
+                    d_output) - self.l2_lambda * self.weights_hidden2_output) * self.learning_rate
+                self.bias_hidden2_output += np.sum(d_output, axis=0, keepdims=True) * self.learning_rate
 
-            self.weights_hidden1_hidden2 += hidden_layer1_output.T.dot(d_hidden2_layer) * self.learning_rate
-            self.bias_hidden1_hidden2 += np.sum(d_hidden2_layer, axis=0, keepdims=True) * self.learning_rate
+                self.weights_hidden1_hidden2 += (hidden_layer1_output.T.dot(
+                    d_hidden2_layer) - self.l2_lambda * self.weights_hidden1_hidden2) * self.learning_rate
+                self.bias_hidden1_hidden2 += np.sum(d_hidden2_layer, axis=0, keepdims=True) * self.learning_rate
 
-            self.weights_input_hidden1 += X.T.dot(d_hidden1_layer) * self.learning_rate
-            self.bias_input_hidden1 += np.sum(d_hidden1_layer, axis=0, keepdims=True) * self.learning_rate
+                self.weights_input_hidden1 += (X.T.dot(
+                    d_hidden1_layer) - self.l2_lambda * self.weights_input_hidden1) * self.learning_rate
+                self.bias_input_hidden1 += np.sum(d_hidden1_layer, axis=0, keepdims=True) * self.learning_rate
+            else:
+                self.weights_hidden2_output += hidden_layer2_output.T.dot(d_output) * self.learning_rate
+                self.bias_hidden2_output += np.sum(d_output, axis=0, keepdims=True) * self.learning_rate
+
+                self.weights_hidden1_hidden2 += hidden_layer1_output.T.dot(d_hidden2_layer) * self.learning_rate
+                self.bias_hidden1_hidden2 += np.sum(d_hidden2_layer, axis=0, keepdims=True) * self.learning_rate
+
+                self.weights_input_hidden1 += X.T.dot(d_hidden1_layer) * self.learning_rate
+                self.bias_input_hidden1 += np.sum(d_hidden1_layer, axis=0, keepdims=True) * self.learning_rate
 
     def predict(self, X):
         hidden_layer1_input = np.dot(X, self.weights_input_hidden1) + self.bias_input_hidden1
@@ -153,7 +181,8 @@ hidden_layer_units1 = 64
 hidden_layer_units2 = 32
 output_size = len(set(output_labels))
 
-model = MLP(input_size, hidden_layer_units1, hidden_layer_units2, output_size, learning_rate=0.01)
+model = MLP(input_size, hidden_layer_units1, hidden_layer_units2, output_size, learning_rate=0.01,
+            l2_regularization=True, l2_lambda=0.1, use_dropout=False, dropout_rate=0.5)
 
 model.fit(X_train, y_train, epochs=100)
 
@@ -167,7 +196,6 @@ for metric, value in evaluation_result.items():
 
 
 confusion_matrix(y_test, y_pred)
-
-
-
+# The dataset is too skewed(very few examples of class 1 and nothing for the third class yet that it exists)
+# and that's why our model doesn't perfom properly in the first class;Even though we have a nice f1-score
 
